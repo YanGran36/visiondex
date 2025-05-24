@@ -2,58 +2,39 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>VisionDex - Yo Superior</title>
+  <title>VisionDex</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
+    body {
       background: black;
-      font-family: Arial, sans-serif;
       color: white;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #avatar {
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      transition: filter 2s ease;
-      box-shadow: 0 0 60px rgba(255,255,255,0.15);
-    }
-
-    button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      font-size: 18px;
-      border: none;
-      background: #333;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    #response {
-      margin-top: 20px;
-      white-space: pre-line;
+      font-family: sans-serif;
       text-align: center;
+      padding: 3rem;
+    }
+    #response {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      white-space: pre-line;
+    }
+    button {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      margin-top: 2rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex" />
-  <p id="response">Presiona el botón y háblale a VisionDex</p>
+  <h1>🪞 VisionDex</h1>
+  <p id="response">Presiona el botón para hablar...</p>
   <button onclick="startRecognition()">🎙️ Hablar</button>
 
   <script>
     const responseBox = document.getElementById("response");
 
     async function speak(text) {
-      const apiKey = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
-      const voiceId = "8DzKSPdgEQPaK5vKG0Rs";
+      const apiKey = sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5;
+      const voiceId = 8DzKSPdgEQPaK5vKG0Rs;
 
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
@@ -77,27 +58,14 @@
       audio.play();
     }
 
-    async function getGPTReply(text) {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": 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
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "Eres VisionDex, un espejo digital sabio. Guías a Yandeivis con inteligencia, claridad y visión superior." },
-            { role: "user", content: text }
-          ]
-        })
-      });
-      const data = await res.json();
-      return data.choices[0].message.content;
-    }
-
     function startRecognition() {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        responseBox.textContent = "❌ Este navegador no soporta reconocimiento de voz.";
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
       recognition.lang = "es-ES";
       recognition.start();
       responseBox.textContent = "🎧 Escuchando...";
@@ -106,13 +74,14 @@
         const userText = event.results[0][0].transcript;
         responseBox.textContent = "🗣️ Tú: " + userText;
 
-        const reply = await getGPTReply(userText);
+        // Respuesta simple (sin OpenAI por ahora, solo para probar voz)
+        const reply = "Hola Yandeivis, escuché que dijiste: " + userText;
         responseBox.textContent += "\n🤖 VisionDex: " + reply;
         speak(reply);
       };
 
-      recognition.onerror = () => {
-        responseBox.textContent = "❌ Hubo un error con el micrófono.";
+      recognition.onerror = (event) => {
+        responseBox.textContent = "❌ Error de micrófono: " + event.error;
       };
     }
   </script>
