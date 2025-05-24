@@ -5,7 +5,7 @@
   <title>VisionDex</title>
   <style>
     body {
-      background: black;
+      background-color: black;
       color: white;
       font-family: sans-serif;
       text-align: center;
@@ -30,15 +30,14 @@
 <body>
   <h1>🎙️ VisionDex</h1>
   <p id="response">Presiona el botón para comenzar</p>
-  <button id="hablar">Hablar</button>
+  <button onclick="startRecognition()">Hablar</button>
 
   <script>
     const responseBox = document.getElementById("response");
 
     async function speak(text) {
-      // API de ElevenLabs
-      const apiKey = sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5;
-      const voiceId = 8DzKSPdgEQPaK5vKG0Rs;
+      const apiKey = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
+      const voiceId = "8DzKSPdgEQPaK5vKG0Rs";
 
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
@@ -67,16 +66,17 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": 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
+          "Authorization": "Bearer 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"
         },
         body: JSON.stringify({
           model: "gpt-3.5-turbo",
           messages: [
-            { role: "system", content: "Eres VisionDex, un espejo sabio. Hablas como una versión mejorada de Yandeivis." },
+            { role: "system", content: "Eres VisionDex, un espejo digital sabio. Hablas como la mejor versión de Yandeivis." },
             { role: "user", content: text }
           ]
         })
       });
+
       const data = await res.json();
       return data.choices[0].message.content;
     }
@@ -106,12 +106,6 @@
         responseBox.textContent = "❌ Error: " + event.error;
       };
     }
-
-    // ✅ SOLO una forma de llamar a la función
-    document.getElementById("hablar").addEventListener("click", () => {
-  alert("✅ Botón funcionando correctamente");
-});
-
   </script>
 </body>
 </html>
