@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -51,59 +50,53 @@
 
   <script>
     const responseBox = document.getElementById("response");
-    let introSaid = false;
 
     async function speak(text) {
-  const apiKey = sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5;
-  const voiceId = "8DzKSPdgEQPaK5vKG0Rs"; // Puedes cambiarla por otra voz desde ElevenLabs
+      const apiKey = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
+      const voiceId = "8DzKSPdgEQPaK5vKG0Rs";
 
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: "POST",
-    headers: {
-      "Accept": "audio/mpeg",
-      "Content-Type": "application/json",
-      "xi-api-key": apiKey
-    },
-    body: JSON.stringify({
-      text: text,
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75
-      }
-    })
-  });
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: "POST",
+        headers: {
+          "Accept": "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": apiKey
+        },
+        body: JSON.stringify({
+          text: text,
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+          }
+        })
+      });
 
-  const audioBlob = await res.blob();
-  const audioUrl = URL.createObjectURL(audioBlob);
-  const audio = new Audio(audioUrl);
-  audio.play();
-}
-
-
-    function rememberMessage(input) {
-      let log = localStorage.getItem("visiondex_log") || "";
-      log += "\n- " + input;
-      localStorage.setItem("visiondex_log", log);
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
     }
 
-    function getLastMemory() {
-      const log = localStorage.getItem("visiondex_log");
-      if (log) {
-        const last = log.trim().split("\n").slice(-1)[0];
-        return last ? `Últimamente dijiste: ${last.replace("- ", "")}` : "";
-      }
-      return "";
+    async function getGPTReply(text) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "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"
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "Eres VisionDex, un espejo digital sabio. Guías a Yandeivis con inteligencia, claridad y visión superior." },
+            { role: "user", content: text }
+          ]
+        })
+      });
+      const data = await res.json();
+      return data.choices[0].message.content;
     }
 
     function startRecognition() {
-      if (!introSaid) {
-        const memory = getLastMemory();
-        let intro = "Continuamos ayudando más. ¿En qué nos enfocamos esta vez?";
-        if (memory) intro += " " + memory;
-        speak(intro);
-        introSaid = true;
-      }
-
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "es-ES";
       recognition.start();
@@ -111,7 +104,6 @@
 
       recognition.onresult = async (event) => {
         const userText = event.results[0][0].transcript;
-        rememberMessage(userText);
         responseBox.textContent = "🗣️ Tú: " + userText;
 
         const reply = await getGPTReply(userText);
@@ -122,25 +114,6 @@
       recognition.onerror = () => {
         responseBox.textContent = "❌ Hubo un error con el micrófono.";
       };
-    }
-
-    async function getGPTReply(text) {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": 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
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "Eres VisionDex, un espejo digital mágico, sabio y claro. Hablas como la mejor versión de Yandeivis." },
-            { role: "user", content: text }
-          ]
-        })
-      });
-      const data = await res.json();
-      return data.choices[0].message.content;
     }
   </script>
 </body>
