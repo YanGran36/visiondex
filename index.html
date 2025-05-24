@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>VisionDex - Espejo Mágico</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      font-family: Arial, sans-serif;
+      color: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #avatar {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      transition: filter 2s ease;
+      box-shadow: 0 0 60px rgba(255,255,255,0.15);
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 18px;
+      border: none;
+      background: #333;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #response {
+      margin-top: 20px;
+      white-space: pre-line;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex" />
+  <p id="response">Presiona el botón y háblale a VisionDex</p>
+  <button onclick="startRecognition()">🎙️ Hablar</button>
+
+  <script>
+    const avatar = document.getElementById("avatar");
+    const responseBox = document.getElementById("response");
+
+    const colorFilters = [
+      "hue-rotate(0deg)",
+      "hue-rotate(45deg)",
+      "hue-rotate(90deg)",
+      "hue-rotate(135deg)",
+      "hue-rotate(180deg)",
+      "hue-rotate(225deg)",
+      "hue-rotate(270deg)",
+      "hue-rotate(315deg)"
+    ];
+
+    function rotateColor() {
+      const filter = colorFilters[Math.floor(Math.random() * colorFilters.length)];
+      const interval = Math.floor(Math.random() * (13000 - 6000 + 1)) + 6000;
+      avatar.style.filter = filter;
+      setTimeout(rotateColor, interval);
+    }
+
+    rotateColor();
+
+    function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "es-ES";
+      speechSynthesis.speak(utter);
+    }
+
+    function startRecognition() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "es-ES";
+      recognition.start();
+      responseBox.textContent = "🎧 Escuchando...";
+
+      recognition.onresult = async (event) => {
+        const userText = event.results[0][0].transcript;
+        responseBox.textContent = "🗣️ Tú: " + userText;
+
+        const reply = await getGPTReply(userText);
+        responseBox.textContent += "\n🤖 VisionDex: " + reply;
+        speak(reply);
+      };
+
+      recognition.onerror = () => {
+        responseBox.textContent = "❌ Hubo un error con el micrófono.";
+      };
+    }
+
+    async function getGPTReply(text) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer TU_API_KEY"
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "Eres VisionDex, un espejo digital mágico, sabio y elegante. Tu voz es suave, clara y respetuosa." },
+            { role: "user", content: text }
+          ]
+        })
+      });
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
+  </script>
+</body>
+</html>
