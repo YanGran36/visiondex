@@ -74,11 +74,11 @@
     }
 
     window.onload = () => {
-      const memory = getLastMemory();
-      let intro = "Continuamos ayudando más. ¿En qué nos enfocamos esta vez?";
-      if (memory) intro += " " + memory;
-      speak(intro);
-    };
+  const memory = getLastMemory();
+  let intro = "Continuamos ayudando más. ¿En qué nos enfocamos esta vez?";
+  if (memory) intro += " " + memory;
+  speak(intro);
+};
 
     function startRecognition() {
       window.onload = () => {
