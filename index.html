@@ -2,108 +2,135 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>VisionDex</title>
+  <title>VisionDex - Espejo Mágico</title>
   <style>
-    body {
-      background-color: black;
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
       color: white;
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2rem;
+      font-family: Arial, sans-serif;
     }
+
+    #avatar {
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 10px solid transparent;
+      box-shadow: 0 0 80px rgba(255,255,255,0.05);
+      transition: border-color 2s ease, box-shadow 2s ease;
+    }
+
     button {
-      padding: 1rem 2rem;
-      font-size: 1.2rem;
-      background-color: #444;
-      border: none;
+      margin-top: 30px;
+      padding: 14px 30px;
+      font-size: 18px;
+      background: #111;
       color: white;
-      cursor: pointer;
+      border: 2px solid #444;
       border-radius: 8px;
+      cursor: pointer;
     }
+
     #response {
-      margin-top: 2rem;
-      font-size: 1.1rem;
+      margin-top: 20px;
+      text-align: center;
       white-space: pre-line;
+      max-width: 90vw;
     }
   </style>
 </head>
 <body>
-  <h1>🎙️ VisionDex</h1>
-  <p id="response">Presiona el botón para comenzar</p>
-  <button onclick="startRecognition()">Hablar</button>
+  <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex Avatar" />
+  <div id="response">Presiona el botón para hablar con VisionDex</div>
+  <button onclick="startRecognition()">🎙️ Hablar</button>
 
   <script>
     const responseBox = document.getElementById("response");
+    const avatar = document.getElementById("avatar");
 
-    async function speak(text) {
-      const apiKey = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
-      const voiceId = "8DzKSPdgEQPaK5vKG0Rs";
+    // 🎨 Ciclo de colores
+    const colores = ["#4ecdc4", "#c7f464", "#ff6b6b", "#ffcc5c", "#9d50bb", "#00f2fe"];
+    let colorIndex = 0;
+    setInterval(() => {
+      avatar.style.borderColor = colores[colorIndex];
+      avatar.style.boxShadow = `0 0 60px ${colores[colorIndex]}`;
+      colorIndex = (colorIndex + 1) % colores.length;
+    }, 12000); // cada 12 segundos
 
-      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-        method: "POST",
-        headers: {
-          "Accept": "audio/mpeg",
-          "Content-Type": "application/json",
-          "xi-api-key": apiKey
-        },
-        body: JSON.stringify({
-          text: text,
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75
-          }
-        })
-      });
-
-      const audioBlob = await res.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.play();
-    }
+    // 🧠 GPT & ElevenLabs (usa tus claves)
+    const OPENAI_KEY = "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";
+    const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
+    const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
 
     async function getGPTReply(text) {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer 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"
+          Authorization: `Bearer ${OPENAI_KEY}`,
         },
         body: JSON.stringify({
           model: "gpt-3.5-turbo",
           messages: [
-            { role: "system", content: "Eres VisionDex, un espejo digital sabio. Hablas como la mejor versión de Yandeivis." },
+            { role: "system", content: "Eres VisionDex, un guía personal sabio, claro y con voz calmada." },
             { role: "user", content: text }
           ]
-        })
+        }),
       });
-
       const data = await res.json();
       return data.choices[0].message.content;
     }
 
+    async function speakWithVoiceLabs(text) {
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": ELEVEN_API_KEY,
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_monolingual_v1",
+          voice_settings: { stability: 0.5, similarity_boost: 0.7 }
+        }),
+      });
+      const audioBlob = await res.blob();
+      const audioURL = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioURL);
+      audio.play();
+    }
+
     function startRecognition() {
-      const recog = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!recog) {
-        responseBox.textContent = "❌ Este navegador no soporta reconocimiento de voz.";
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Tu navegador no soporta reconocimiento de voz.");
         return;
       }
 
-      const recognition = new recog();
+      const recognition = new SpeechRecognition();
       recognition.lang = "es-ES";
       recognition.start();
       responseBox.textContent = "🎧 Escuchando...";
 
-      recognition.onresult = async function(event) {
+      recognition.onresult = async (event) => {
         const userText = event.results[0][0].transcript;
         responseBox.textContent = "🗣️ Tú: " + userText;
 
         const reply = await getGPTReply(userText);
-        responseBox.textContent += "\\n🤖 VisionDex: " + reply;
-        speak(reply);
+        responseBox.textContent += "\n🤖 VisionDex: " + reply;
+        speakWithVoiceLabs(reply);
       };
 
-      recognition.onerror = function(event) {
-        responseBox.textContent = "❌ Error: " + event.error;
+      recognition.onerror = () => {
+        responseBox.textContent = "❌ No se pudo activar el micrófono.";
       };
     }
   </script>
