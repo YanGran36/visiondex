@@ -51,6 +51,7 @@
 
   <script>
     const responseBox = document.getElementById("response");
+    let introSaid = false;
 
     function speak(text) {
       const utter = new SpeechSynthesisUtterance(text);
@@ -73,17 +74,14 @@
       return "";
     }
 
-    window.onload = () => {
-  const memory = getLastMemory();
-  let intro = "Continuamos ayudando más. ¿En qué nos enfocamos esta vez?";
-  if (memory) intro += " " + memory;
-  speak(intro);
-};
-
     function startRecognition() {
-      window.onload = () => {
-  speak("Continuamos ayudando más. ¿En qué nos enfocamos esta vez?");
-};
+      if (!introSaid) {
+        const memory = getLastMemory();
+        let intro = "Continuamos ayudando más. ¿En qué nos enfocamos esta vez?";
+        if (memory) intro += " " + memory;
+        speak(intro);
+        introSaid = true;
+      }
 
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "es-ES";
