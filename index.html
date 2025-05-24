@@ -108,7 +108,10 @@
     }
 
     // ✅ SOLO una forma de llamar a la función
-    document.getElementById("hablar").addEventListener("click", startRecognition);
+    document.getElementById("hablar").addEventListener("click", () => {
+  alert("✅ Botón funcionando correctamente");
+});
+
   </script>
 </body>
 </html>
