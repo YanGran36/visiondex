@@ -81,6 +81,10 @@
     };
 
     function startRecognition() {
+      window.onload = () => {
+  speak("Continuamos ayudando más. ¿En qué nos enfocamos esta vez?");
+};
+
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "es-ES";
       recognition.start();
