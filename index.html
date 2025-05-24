@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,7 +6,7 @@
   <title>VisionDex</title>
   <style>
     body {
-      background-color: #000;
+      background: black;
       color: white;
       font-family: sans-serif;
       text-align: center;
@@ -30,7 +31,7 @@
 <body>
   <h1>🎙️ VisionDex</h1>
   <p id="response">Presiona el botón para comenzar</p>
-  <button onclick="start()">Hablar</button>
+  <button onclick="startRecognition()">Hablar</button>
 
   <script>
     const responseBox = document.getElementById("response");
@@ -49,39 +50,60 @@
         body: JSON.stringify({
           text: text,
           voice_settings: {
-            stability: 0.4,
+            stability: 0.5,
             similarity_boost: 0.75
           }
         })
       });
 
       const audioBlob = await res.blob();
-      const url = URL.createObjectURL(audioBlob);
-      const audio = new Audio(url);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
       audio.play();
     }
 
-    function start() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        responseBox.textContent = "❌ Tu navegador no soporta reconocimiento de voz.";
+    async function getGPTReply(text) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": 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
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "Eres VisionDex, un espejo sabio. Respondes con claridad y calma a Yandeivis." },
+            { role: "user", content: text }
+          ]
+        })
+      });
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
+
+    function startRecognition() {
+      const recog = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!recog) {
+        responseBox.textContent = "❌ Este navegador no soporta reconocimiento de voz.";
         return;
       }
 
-      const recognition = new SpeechRecognition();
+      const recognition = new recog();
       recognition.lang = "es-ES";
       recognition.start();
       responseBox.textContent = "🎧 Escuchando...";
 
-      recognition.onresult = (event) => {
+      recognition.onresult = async function(event) {
         const userText = event.results[0][0].transcript;
-        const reply = `Hola Yandeivis, escuché que dijiste: ${userText}`;
-        responseBox.textContent = `🗣️ Tú: ${userText}\n🤖 VisionDex: ${reply}`;
+        responseBox.textContent = "🗣️ Tú: " + userText;
+
+        const reply = await getGPTReply(userText);
+        responseBox.textContent += "\n🤖 VisionDex: " + reply;
         speak(reply);
       };
 
-      recognition.onerror = (event) => {
-        responseBox.textContent = `❌ Error: ${event.error}`;
+      recognition.onerror = function(event) {
+        responseBox.textContent = "❌ Error: " + event.error;
       };
     }
   </script>
