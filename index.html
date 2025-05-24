@@ -5,29 +5,32 @@
   <title>VisionDex</title>
   <style>
     body {
-      background: black;
+      background-color: #000;
       color: white;
       font-family: sans-serif;
       text-align: center;
-      padding: 3rem;
-    }
-    #response {
-      margin-top: 2rem;
-      font-size: 1.2rem;
-      white-space: pre-line;
+      padding: 2rem;
     }
     button {
       padding: 1rem 2rem;
       font-size: 1.2rem;
-      margin-top: 2rem;
+      background-color: #444;
+      border: none;
+      color: white;
       cursor: pointer;
+      border-radius: 8px;
+    }
+    #response {
+      margin-top: 2rem;
+      font-size: 1.1rem;
+      white-space: pre-line;
     }
   </style>
 </head>
 <body>
-  <h1>🪞 VisionDex</h1>
-  <p id="response">Presiona el botón para hablar...</p>
-  <button onclick="startRecognition()">🎙️ Hablar</button>
+  <h1>🎙️ VisionDex</h1>
+  <p id="response">Presiona el botón para comenzar</p>
+  <button onclick="start()">Hablar</button>
 
   <script>
     const responseBox = document.getElementById("response");
@@ -46,22 +49,22 @@
         body: JSON.stringify({
           text: text,
           voice_settings: {
-            stability: 0.5,
+            stability: 0.4,
             similarity_boost: 0.75
           }
         })
       });
 
       const audioBlob = await res.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      const url = URL.createObjectURL(audioBlob);
+      const audio = new Audio(url);
       audio.play();
     }
 
-    function startRecognition() {
+    function start() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        responseBox.textContent = "❌ Este navegador no soporta reconocimiento de voz.";
+        responseBox.textContent = "❌ Tu navegador no soporta reconocimiento de voz.";
         return;
       }
 
@@ -70,18 +73,15 @@
       recognition.start();
       responseBox.textContent = "🎧 Escuchando...";
 
-      recognition.onresult = async (event) => {
+      recognition.onresult = (event) => {
         const userText = event.results[0][0].transcript;
-        responseBox.textContent = "🗣️ Tú: " + userText;
-
-        // Respuesta simple (sin OpenAI por ahora, solo para probar voz)
-        const reply = "Hola Yandeivis, escuché que dijiste: " + userText;
-        responseBox.textContent += "\n🤖 VisionDex: " + reply;
+        const reply = `Hola Yandeivis, escuché que dijiste: ${userText}`;
+        responseBox.textContent = `🗣️ Tú: ${userText}\n🤖 VisionDex: ${reply}`;
         speak(reply);
       };
 
       recognition.onerror = (event) => {
-        responseBox.textContent = "❌ Error de micrófono: " + event.error;
+        responseBox.textContent = `❌ Error: ${event.error}`;
       };
     }
   </script>
