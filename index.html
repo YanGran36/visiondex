@@ -50,25 +50,24 @@
 <body>
   <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex Avatar" />
   <div id="response">Presiona el botón para hablar con VisionDex</div>
-  <button onclick="startRecognition()">🎙️ Hablar</button>
+  <button id="talkBtn">🎙️ Hablar</button>
 
   <script>
-    const responseBox = document.getElementById("response");
-    const avatar = document.getElementById("avatar");
-
-    // 🎨 Ciclo de colores
-    const colores = ["#4ecdc4", "#c7f464", "#ff6b6b", "#ffcc5c", "#9d50bb", "#00f2fe"];
-    let colorIndex = 0;
-    setInterval(() => {
-      avatar.style.borderColor = colores[colorIndex];
-      avatar.style.boxShadow = `0 0 60px ${colores[colorIndex]}`;
-      colorIndex = (colorIndex + 1) % colores.length;
-    }, 12000); // cada 12 segundos
-
-    // 🧠 GPT & ElevenLabs (usa tus claves)
     const OPENAI_KEY = "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";
     const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
     const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
+    
+    const responseBox = document.getElementById("response");
+    const avatar = document.getElementById("avatar");
+    const talkBtn = document.getElementById("talkBtn");
+
+    const colors = ["#4ecdc4", "#c7f464", "#ff6b6b", "#ffcc5c", "#9d50bb", "#00f2fe"];
+    let colorIndex = 0;
+    setInterval(() => {
+      avatar.style.borderColor = colors[colorIndex];
+      avatar.style.boxShadow = `0 0 60px ${colors[colorIndex]}`;
+      colorIndex = (colorIndex + 1) % colors.length;
+    }, 12000);
 
     async function getGPTReply(text) {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -89,26 +88,30 @@
       return data.choices[0].message.content;
     }
 
-    async function speakWithVoiceLabs(text) {
-      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": ELEVEN_API_KEY,
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: { stability: 0.5, similarity_boost: 0.7 }
-        }),
-      });
-      const audioBlob = await res.blob();
-      const audioURL = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioURL);
-      audio.play();
+    async function speakWithElevenLabs(text) {
+      try {
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "xi-api-key": ELEVEN_API_KEY,
+          },
+          body: JSON.stringify({
+            text: text,
+            model_id: "eleven_monolingual_v1",
+            voice_settings: { stability: 0.5, similarity_boost: 0.7 }
+          }),
+        });
+        const audioBlob = await res.blob();
+        const audioURL = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioURL);
+        audio.play();
+      } catch (error) {
+        responseBox.textContent += "\n⚠️ Error al reproducir audio.";
+      }
     }
 
-    function startRecognition() {
+    async function startRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         alert("Tu navegador no soporta reconocimiento de voz.");
@@ -117,7 +120,9 @@
 
       const recognition = new SpeechRecognition();
       recognition.lang = "es-ES";
+      recognition.interimResults = false;
       recognition.start();
+
       responseBox.textContent = "🎧 Escuchando...";
 
       recognition.onresult = async (event) => {
@@ -126,13 +131,19 @@
 
         const reply = await getGPTReply(userText);
         responseBox.textContent += "\n🤖 VisionDex: " + reply;
-        speakWithVoiceLabs(reply);
+
+        await speakWithElevenLabs(reply);
       };
 
-      recognition.onerror = () => {
-        responseBox.textContent = "❌ No se pudo activar el micrófono.";
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        responseBox.textContent = "❌ Error: no se pudo activar el micrófono.";
       };
     }
+
+    talkBtn.addEventListener("click", () => {
+      startRecognition();
+    });
   </script>
 </body>
 </html>
