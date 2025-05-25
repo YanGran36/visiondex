@@ -63,7 +63,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <script>
-    // ✅ Configuración Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBrYDLumbpc4A0ZjLma6JeU0SRjVyZEK8U",
       authDomain: "visiondex-memoria.firebaseapp.com",
@@ -76,34 +75,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 🔑 Claves ElevenLabs + OpenAI
     const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
     const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
     const OPENAI_KEY = "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";
 
     const responseBox = document.getElementById("response");
     const askBtn = document.getElementById("askBtn");
-
     askBtn.addEventListener("click", handleQuestion);
-
-    async function getGPTReply(text) {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "You are VisionDex, a friendly intelligent assistant with memory." },
-            { role: "user", content: text }
-          ]
-        })
-      });
-      const data = await res.json();
-      return data.choices[0].message.content;
-    }
 
     async function speak(text) {
       responseBox.textContent = "🧠 VisionDex: " + text;
@@ -134,10 +112,43 @@
         return;
       }
 
+      responseBox.textContent = "✨ Consultando tu memoria...";
+
+      const memorySnapshot = await db.collection("memoria")
+        .orderBy("timestamp", "desc")
+        .limit(5)
+        .get();
+
+      const memoryMessages = [];
+      memorySnapshot.docs.reverse().forEach(doc => {
+        const data = doc.data();
+        memoryMessages.push({ role: "user", content: data.pregunta });
+        memoryMessages.push({ role: "assistant", content: data.respuesta });
+      });
+
+      memoryMessages.push({ role: "user", content: input });
+
       responseBox.textContent = "✨ Pensando...";
 
       try {
-        const reply = await getGPTReply(input);
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${OPENAI_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: "Eres VisionDex, un guía sabio y claro con memoria de tus últimas conversaciones." },
+              ...memoryMessages
+            ]
+          })
+        });
+
+        const data = await res.json();
+        const reply = data.choices[0].message.content;
+
         responseBox.textContent = `🗣️ Tú: ${input}\n🤖 VisionDex: ${reply}`;
 
         await db.collection("memoria").add({
@@ -148,7 +159,7 @@
 
         speak(reply);
       } catch (error) {
-        responseBox.textContent = "❌ Ocurrió un error: " + error.message;
+        responseBox.textContent = "❌ Error: " + error.message;
         console.error(error);
       }
     }
