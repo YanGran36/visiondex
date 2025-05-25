@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>VisionDex - Voz de ElevenLabs</title>
+  <title>VisionDex - Espejo Mágico</title>
   <style>
     html, body {
       margin: 0;
@@ -27,67 +27,96 @@
     }
 
     #response {
-      margin-top: 30px;
-      font-size: 1.2rem;
+      margin-top: 20px;
+      font-size: 1rem;
       text-align: center;
       max-width: 90%;
     }
 
-    button {
+    input, button {
       margin-top: 20px;
-      padding: 12px 24px;
-      font-size: 16px;
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+    }
+
+    input {
+      width: 70%;
+      text-align: center;
+    }
+
+    button {
       background: #222;
       color: white;
-      border: 1px solid #555;
-      border-radius: 6px;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
   <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex" />
-  <div id="response">Presiona el botón para escuchar a VisionDex</div>
-  <button onclick="speakNow()">🔊 Hablar</button>
+  <input id="userInput" type="text" placeholder="Ask VisionDex something..." />
+  <button onclick="handleQuestion()">✨ Ask</button>
+  <div id="response">VisionDex is listening...</div>
 
   <script>
     const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
     const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
+    const OPENAI_KEY = "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";
     const responseBox = document.getElementById("response");
 
     async function speak(text) {
       responseBox.textContent = "🧠 VisionDex: " + text;
 
-      try {
-        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "xi-api-key": ELEVEN_API_KEY,
-          },
-          body: JSON.stringify({
-            text: text,
-            model_id: "eleven_monolingual_v1",
-            voice_settings: {
-              stability: 0.4,
-              similarity_boost: 0.8
-            }
-          }),
-        });
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": ELEVEN_API_KEY,
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_monolingual_v1",
+          voice_settings: {
+            stability: 0.2,
+            similarity_boost: 0.9
+          }
+        }),
+      });
 
-        const audioBlob = await res.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        console.log("🔊 Audio generado:", audioUrl);
-        const audio = new Audio(audioUrl);
-        audio.play();
-      } catch (err) {
-        responseBox.textContent = "❌ Error al cargar la voz.";
-        console.error(err);
-      }
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
     }
 
-    function speakNow() {
-      speak("Hello, I’m VisionDex. I’m ready to help you as your digital guide. What would you like to focus on today?");
+    async function getGPTReply(userText) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are VisionDex, a friendly Latin digital assistant that answers clearly and wisely." },
+            { role: "user", content: userText }
+          ]
+        }),
+      });
+
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
+
+    async function handleQuestion() {
+      const input = document.getElementById("userInput").value.trim();
+      if (!input) return;
+
+      responseBox.textContent = "✨ Thinking...";
+      const reply = await getGPTReply(input);
+      speak(reply);
     }
   </script>
 </body>
