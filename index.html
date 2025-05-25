@@ -2,64 +2,73 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>VisionDex - Espejo Mágico</title>
+  <title>VisionDex + Firebase</title>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
       background: black;
+      color: white;
       height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-family: Arial, sans-serif;
+      font-family: Arial;
     }
-
     #avatar {
       width: 300px;
       height: 300px;
       border-radius: 50%;
       object-fit: cover;
-      border: 8px solid #444;
-      box-shadow: 0 0 60px rgba(255,255,255,0.1);
     }
-
     #response {
       margin-top: 20px;
-      font-size: 1rem;
       text-align: center;
       max-width: 90%;
+      white-space: pre-line;
     }
-
     input, button {
-      margin-top: 20px;
+      margin-top: 15px;
       padding: 10px;
-      font-size: 1rem;
-      border-radius: 6px;
-      border: none;
+      font-size: 16px;
+      border-radius: 5px;
     }
-
     input {
       width: 70%;
       text-align: center;
     }
-
     button {
       background: #222;
       color: white;
+      border: 1px solid #555;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
   <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex" />
-  <input id="userInput" type="text" placeholder="Ask VisionDex something..." />
-  <button onclick="handleQuestion()">✨ Ask</button>
-  <div id="response">VisionDex is listening...</div>
+  <input id="userInput" type="text" placeholder="¿Qué deseas preguntarme?" />
+  <button onclick="handleQuestion()">✨ Preguntar</button>
+  <div id="response">VisionDex está listo...</div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <script>
+    // 🔐 Reemplaza con tu configuración real
+    const firebaseConfig = {
+  apiKey: AIzaSyBrYDLumbpc4A0ZjLma6JeU0SRjVyZEK8U,
+  authDomain: visiondex-memoria.firebaseapp.com,
+  projectId: visiondex-memoria,
+  storageBucket: visiondex-memoria.firebasestorage.app,
+  messagingSenderId: 275328166095,
+  appId: 1:275328166095:web:6bd859080cd0bb31836fba,
+  measurementId: G-HV5NMXHF6E
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
     const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
     const OPENAI_KEY = "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";
@@ -67,7 +76,6 @@
 
     async function speak(text) {
       responseBox.textContent = "🧠 VisionDex: " + text;
-
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
         method: "POST",
         headers: {
@@ -81,13 +89,11 @@
             stability: 0.2,
             similarity_boost: 0.9
           }
-        }),
+        })
       });
-
       const audioBlob = await res.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.play();
+      new Audio(audioUrl).play();
     }
 
     async function getGPTReply(userText) {
@@ -100,12 +106,11 @@
         body: JSON.stringify({
           model: "gpt-3.5-turbo",
           messages: [
-            { role: "system", content: "You are VisionDex, a friendly Latin digital assistant that answers clearly and wisely." },
+            { role: "system", content: "You are VisionDex, a friendly, intelligent assistant with memory." },
             { role: "user", content: userText }
           ]
-        }),
+        })
       });
-
       const data = await res.json();
       return data.choices[0].message.content;
     }
@@ -114,8 +119,17 @@
       const input = document.getElementById("userInput").value.trim();
       if (!input) return;
 
-      responseBox.textContent = "✨ Thinking...";
+      responseBox.textContent = "✨ Pensando...";
       const reply = await getGPTReply(input);
+      responseBox.textContent = `🗣️ Tú: ${input}\n🤖 VisionDex: ${reply}`;
+
+      // 🧠 Guardar en Firebase
+      await db.collection("memoria").add({
+        pregunta: input,
+        respuesta: reply,
+        timestamp: new Date()
+      });
+
       speak(reply);
     }
   </script>
