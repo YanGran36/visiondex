@@ -140,7 +140,7 @@
           body: JSON.stringify({
             model: "gpt-3.5-turbo",
             messages: [
-              { role: "system", content: "Eres VisionDex, un guía sabio y claro con memoria de tus últimas conversaciones." },
+              { "role": "system", "content": "You are VisionDex, a calm, intelligent and emotionally aware assistant who remembers recent conversations and gives thoughtful, concise answers." }
               ...memoryMessages
             ]
           })
