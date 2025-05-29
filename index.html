@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>VisionDex - Smart Mirror</title>
+  <title>VisionDex</title>
   <style>
     html, body {
       background: black;
@@ -16,7 +16,6 @@
       align-items: center;
       justify-content: center;
     }
-
     #avatar {
       width: 300px;
       height: 300px;
@@ -24,26 +23,22 @@
       object-fit: cover;
       box-shadow: 0 0 40px rgba(255,255,255,0.1);
     }
-
     input, button {
       margin-top: 15px;
       padding: 10px;
       font-size: 16px;
       border-radius: 5px;
     }
-
     input {
       width: 80%;
       text-align: center;
     }
-
     button {
       background: #222;
       color: white;
       border: 1px solid #555;
       cursor: pointer;
     }
-
     #response {
       margin-top: 20px;
       max-width: 90%;
@@ -53,8 +48,8 @@
   </style>
 </head>
 <body>
-  <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex" />
-  <input id="userInput" type="text" placeholder="What do you want to ask me?" />
+  <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex Avatar" />
+  <input id="userInput" type="text" placeholder="Ask me something..." />
   <button id="askBtn">✨ Ask</button>
   <div id="response">VisionDex is ready...</div>
 
@@ -63,6 +58,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <script>
+    // ✅ Replace with your actual Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBrYDLumbpc4A0ZjLma6JeU0SRjVyZEK8U",
       authDomain: "visiondex-memoria.firebaseapp.com",
@@ -75,13 +71,34 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    const OPENAI_KEY = "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";
     const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
     const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
-    const OPENAI_KEY = "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";
 
     const responseBox = document.getElementById("response");
     const askBtn = document.getElementById("askBtn");
+
     askBtn.addEventListener("click", handleQuestion);
+
+    async function getGPTReply(input, memoryMessages = []) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are VisionDex, a friendly intelligent mirror assistant with short memory." },
+            ...memoryMessages,
+            { role: "user", content: input }
+          ]
+        }),
+      });
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
 
     async function speak(text) {
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
@@ -91,34 +108,30 @@
           "xi-api-key": ELEVEN_API_KEY,
         },
         body: JSON.stringify({
-          text: text,
+          text,
           model_id: "eleven_monolingual_v1",
           voice_settings: {
-            stability: 0.2,
-            similarity_boost: 0.9
+            stability: 0.3,
+            similarity_boost: 0.8
           }
         })
       });
       const audioBlob = await res.blob();
-      const audioURL = URL.createObjectURL(audioBlob);
-      new Audio(audioURL).play();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      new Audio(audioUrl).play();
     }
 
     async function handleQuestion() {
       const input = document.getElementById("userInput").value.trim();
       if (!input) {
-        responseBox.textContent = "Please type a question.";
+        responseBox.textContent = "Please ask something.";
         return;
       }
 
-      responseBox.textContent = "✨ Thinking...";
+      responseBox.textContent = "Thinking...";
 
       try {
-        const memorySnapshot = await db.collection("memoria")
-          .orderBy("timestamp", "desc")
-          .limit(5)
-          .get();
-
+        const memorySnapshot = await db.collection("memoria").orderBy("timestamp", "desc").limit(5).get();
         const memoryMessages = [];
         memorySnapshot.docs.reverse().forEach(doc => {
           const data = doc.data();
@@ -126,38 +139,14 @@
           memoryMessages.push({ role: "assistant", content: data.respuesta });
         });
 
-        memoryMessages.push({ role: "user", content: input });
-
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${OPENAI_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              { role: "system", content: "You are VisionDex, a wise and helpful mirror assistant with memory of past conversations." },
-              ...memoryMessages
-            ]
-          })
-        });
-
-        const data = await res.json();
-        const reply = data.choices[0].message.content;
+        const reply = await getGPTReply(input, memoryMessages);
 
         responseBox.textContent = `🗣️ You: ${input}\n🤖 VisionDex: ${reply}`;
-
-        await db.collection("memoria").add({
-          pregunta: input,
-          respuesta: reply,
-          timestamp: new Date()
-        });
-
+        await db.collection("memoria").add({ pregunta: input, respuesta: reply, timestamp: new Date() });
         speak(reply);
-      } catch (error) {
-        responseBox.textContent = "❌ Error: " + error.message;
-        console.error(error);
+      } catch (err) {
+        responseBox.textContent = "❌ Error: " + err.message;
+        console.error(err);
       }
     }
   </script>
