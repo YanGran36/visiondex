@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>VisionDex - Espejo Inteligente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionDex - Smart Mirror</title>
   <style>
     html, body {
-      background: black;
-      color: white;
-      font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -28,15 +29,16 @@
       padding: 10px;
       font-size: 16px;
       border-radius: 5px;
+      border: none;
     }
     input {
       width: 80%;
       text-align: center;
+      outline: none;
     }
     button {
       background: #222;
       color: white;
-      border: 1px solid #555;
       cursor: pointer;
     }
     #response {
@@ -46,26 +48,25 @@
       text-align: center;
     }
     #history {
-      margin-top: 20px;
       max-height: 200px;
       overflow-y: auto;
       width: 90%;
       background: #111;
       border: 1px solid #444;
       padding: 10px;
+      margin-top: 20px;
       border-radius: 8px;
       font-size: 14px;
       line-height: 1.4;
     }
+    #history div { margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <img id="avatar"
-       src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png"
-       alt="VisionDex" />
-  <input id="userInput" type="text" placeholder="¿Qué deseas preguntarme?" />
-  <button id="askBtn">✨ Preguntar</button>
-  <div id="response">VisionDex está listo...</div>
+  <img id="avatar" src="https://chatgpt-image-hosting.s3.amazonaws.com/mirror_face_visiondex.png" alt="VisionDex Avatar" />
+  <input id="userInput" type="text" placeholder="Ask VisionDex anything..." />
+  <button id="askBtn">✨ Ask</button>
+  <div id="response">VisionDex is ready...</div>
   <div id="history"></div>
 
   <!-- Firebase SDK -->
@@ -73,132 +74,77 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <script>
-    // 🔧 Configuración de Firebase (ya con tus claves)
+    // ← YOUR FIREBASE CONFIG HERE →
     const firebaseConfig = {
-      apiKey: "AIzaSyBrYDLumbpc4A0ZjLma6JeU0SRjVyZEK8U",
-      authDomain: "visiondex-memoria.firebaseapp.com",
-      projectId: "visiondex-memoria",
-      storageBucket: "visiondex-memoria.appspot.com",
-      messagingSenderId: "275328166095",
-      appId: "1:275328166095:web:6bd859080cd0bb31836fba",
-      measurementId: "G-HV5NMXHF6E"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 🔑 Claves de ElevenLabs (mantén tal cual)
-    const OpenAI_KEY = "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";
+    // API Keys
+    const OPENAI_KEY = "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";
     const ELEVEN_API_KEY = "sk_94f3b84a958dbfd99972c79e0bd6c2fa4f71f9b8bf83d5e5";
     const VOICE_ID = "8DzKSPdgEQPaK5vKG0Rs";
 
-    // ⚠️ Pega aquí tu OpenAI Key
-    const OPENAI_KEY = "TU_OPENAI_API_KEY_AQUÍ";
-
     const responseBox = document.getElementById("response");
-    const askBtn = document.getElementById("askBtn");
+    const historyBox = document.getElementById("history");
+    document.getElementById("askBtn").addEventListener("click", handleQuestion);
 
-    askBtn.addEventListener("click", handleQuestion);
-
-    // Función para actualizar el historial en pantalla
-    function updateHistory(pregunta, respuesta) {
-      const historyBox = document.getElementById("history");
+    // Append entry to history panel
+    function updateHistory(question, answer) {
       const entry = document.createElement("div");
-      entry.style.marginBottom = "12px";
-      entry.innerHTML = `
-        <strong style="color:#58a6ff">Tú:</strong> ${pregunta}<br>
-        <strong style="color:#00e676">VisionDex:</strong> ${respuesta}
-      `;
+      entry.innerHTML = `<strong>You:</strong> ${question}<br><strong>VisionDex:</strong> ${answer}`;
       historyBox.prepend(entry);
-      // Mantener solo 5 entradas
-      while (historyBox.children.length > 5) {
-        historyBox.removeChild(historyBox.lastChild);
-      }
+      // Keep max 5 entries
+      while (historyBox.children.length > 5) historyBox.removeChild(historyBox.lastChild);
     }
 
-    // Envía texto a OpenAI y devuelve la respuesta
-    async function getGPTReply(userText, memoryMessages=[]) {
-      const payload = {
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "Eres VisionDex, un guía sabio y claro con memoria de tus últimas conversaciones." },
-          ...memoryMessages,
-          { role: "user", content: userText }
-        ]
-      };
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${OPENAI_KEY}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      return data.choices[0].message.content;
-    }
-
-    // Reproduce texto con ElevenLabs
-    async function speak(text) {
-      responseBox.textContent = "🧠 VisionDex: " + text;
-      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": ELEVEN_API_KEY
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: { stability: 0.2, similarity_boost: 0.9 }
-        })
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      new Audio(url).play();
-    }
-
-    // Maneja la pregunta: carga memoria, pregunta a GPT, guarda y habla
     async function handleQuestion() {
       const input = document.getElementById("userInput").value.trim();
       if (!input) {
-        responseBox.textContent = "Por favor, escribe algo.";
+        responseBox.textContent = "Please type a question.";
         return;
       }
-
-      responseBox.textContent = "✨ Consultando tu memoria...";
-
-      // Cargar últimas 5 conversaciones de Firestore
-      const snap = await db.collection("memoria")
-        .orderBy("timestamp", "desc")
-        .limit(5)
-        .get();
-
-      const memoryMessages = [];
-      snap.docs.reverse().forEach(doc => {
-        const { pregunta, respuesta } = doc.data();
-        memoryMessages.push({ role: "user", content: pregunta });
-        memoryMessages.push({ role: "assistant", content: respuesta });
+      responseBox.textContent = "✨ Fetching memory...";
+      // Load last 5 from Firebase
+      const snapshot = await db.collection("memoria").orderBy("timestamp","desc").limit(5).get();
+      const memory = [];
+      snapshot.docs.reverse().forEach(doc => {
+        const d = doc.data();
+        memory.push({ role:"user", content:d.pregunta });
+        memory.push({ role:"assistant", content:d.respuesta });
       });
+      memory.push({ role:"user", content: input });
 
-      responseBox.textContent = "✨ Pensando...";
+      responseBox.textContent = "✨ Thinking...";
       try {
-        const reply = await getGPTReply(input, memoryMessages);
-        responseBox.textContent = `🗣️ Tú: ${input}\n🤖 VisionDex: ${reply}`;
-
-        // Guardar en Firebase
-        await db.collection("memoria").add({
-          pregunta: input,
-          respuesta: reply,
-          timestamp: new Date()
+        const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":`Bearer ${OPENAI_KEY}`},
+          body:JSON.stringify({ model:"gpt-3.5-turbo", messages:[{role:"system",content:"You are VisionDex, a friendly AI with memory."}, ...memory] })
         });
-
-        // Actualizar historial en pantalla
+        const data = await gptRes.json();
+        const reply = data.choices[0].message.content;
+        responseBox.textContent = `🤖 VisionDex: ${reply}`;
+        // Save to Firebase
+        await db.collection("memoria").add({ pregunta: input, respuesta: reply, timestamp: new Date() });
         updateHistory(input, reply);
-        speak(reply);
-
-      } catch (err) {
-        console.error(err);
-        responseBox.textContent = "❌ Error: " + err.message;
+        // Speak via ElevenLabs
+        const audioRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+          method:"POST",
+          headers:{"Content-Type":"application/json","xi-api-key":ELEVEN_API_KEY},
+          body: JSON.stringify({ text: reply, model_id:"eleven_monolingual_v1", voice_settings:{stability:0.2,similarity_boost:0.9} })
+        });
+        const blob = await audioRes.blob();
+        new Audio(URL.createObjectURL(blob)).play();
+      } catch(e) {
+        console.error(e);
+        responseBox.textContent = "❌ Error: " + (e.message||e);
       }
     }
   </script>
